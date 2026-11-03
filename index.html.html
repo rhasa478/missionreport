@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Mission Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#e9edf2; --surface:#fff; --ink:#18232f; --muted:#5a6978; --line:#d3dae2;
+    --accent:#1f3a5f; --accent-ink:#fff; --warn:#b45309; --danger:#b91c1c; --ok:#166534; --focus:#c2410c;
+    --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1720; --surface:#17222e; --ink:#e8eef4; --muted:#9aabbb; --line:#2a3947;
+            --accent:#7aa7e0; --accent-ink:#0b1520; --warn:#fbbf24; --danger:#f87171; --ok:#4ade80; --focus:#fb923c; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 var(--font); font-variant-numeric:tabular-nums; }
+  :focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+  [hidden] { display:none !important; }
+
+  /* login */
+  .login-wrap { min-height:100vh; display:grid; place-items:center; padding:1.25rem; }
+  .login { width:100%; max-width:380px; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1.75rem; }
+  .login h1 { margin:0 0 .25rem; font-size:1.4rem; }
+  .login p { margin:0 0 1.25rem; color:var(--muted); font-size:.9rem; }
+
+  label { display:block; font-size:.82rem; font-weight:500; color:var(--muted); margin:.8rem 0 .25rem; }
+  input, textarea { width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:.55rem .65rem; }
+  button, .btn { font:600 .9rem var(--font); cursor:pointer; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); border-radius:6px; padding:.55rem 1rem; }
+  button.ghost { background:transparent; color:var(--accent); }
+  button.danger { background:transparent; color:var(--danger); border-color:var(--line); padding:.2rem .5rem; font-size:.8rem; }
+  .full { width:100%; margin-top:1.2rem; }
+  .error { color:var(--danger); font-size:.85rem; min-height:1.2em; margin-top:.6rem; }
+  .ok { color:var(--ok); font-size:.85rem; min-height:1.2em; margin-top:.6rem; }
+
+  /* app shell */
+  header.bar { background:var(--accent); color:var(--accent-ink); }
+  .bar-in { max-width:1180px; margin:0 auto; padding:.8rem 1.25rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+  .bar h1 { margin:0; font-size:1.15rem; }
+  .bar span { font-size:.85rem; opacity:.85; margin-right:.8rem; }
+  .bar button { background:transparent; color:var(--accent-ink); border-color:var(--accent-ink); padding:.3rem .8rem; }
+  main { max-width:1180px; margin:0 auto; padding:1.25rem; display:grid; gap:1.25rem; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1.1rem 1.25rem; }
+  .panel h2 { margin:0 0 .8rem; font-size:1.05rem; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:0 1rem; }
+  .calc { margin-top:1rem; display:flex; gap:2rem; flex-wrap:wrap; color:var(--muted); font-size:.9rem; }
+  .calc b { color:var(--ink); font-size:1.15rem; display:block; }
+
+  .filters { display:flex; gap:1rem; flex-wrap:wrap; align-items:end; margin-bottom:1rem; }
+  .filters > div { flex:1 1 160px; }
+  .filters label { margin-top:0; }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { padding:.55rem .6rem; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  th { font-weight:600; color:var(--muted); font-size:.8rem; background:var(--bg); }
+  th:first-child, td:first-child, .left { text-align:left; }
+  tfoot td { font-weight:700; border-top:2px solid var(--line); border-bottom:0; }
+  .empty { padding:1.5rem; text-align:center; color:var(--muted); }
+  .toolbar { display:flex; gap:.6rem; flex-wrap:wrap; margin-top:1rem; }
+
+  /* export panel */
+  .export { margin-top:1.25rem; border:1px solid var(--line); border-radius:10px; padding:1rem; background:var(--bg); }
+  .export strong { font-size:1rem; }
+  .export-sum { color:var(--muted); font-size:.85rem; margin-top:.15rem; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:.75rem; margin-top:.9rem; }
+  .tile { position:relative; overflow:hidden; text-align:left; font-weight:400; background:var(--surface); color:var(--ink);
+          border:1px solid var(--line); border-radius:8px; padding:.8rem .9rem .8rem 3.2rem; min-height:68px;
+          transition:transform .15s, border-color .15s, box-shadow .15s; }
+  .tile:hover:not(:disabled) { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 16px rgba(24,35,47,.14); }
+  .tile:disabled { opacity:.5; cursor:not-allowed; }
+  .tile .fill { position:absolute; inset:0 auto 0 0; width:0; background:var(--accent); opacity:.18; }
+  .tile.busy .fill { width:100%; transition:width .85s cubic-bezier(.3,.1,.2,1); }
+  .tile.done .fill { width:100%; opacity:0; transition:opacity .5s; }
+  .tile .ico { position:absolute; left:.8rem; top:50%; translate:0 -50%; width:1.9rem; height:1.9rem; border-radius:50%;
+               display:grid; place-items:center; background:var(--accent); color:var(--accent-ink); transition:background .2s; }
+  .ico svg { width:1.05rem; height:1.05rem; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .ico .chk { display:none; }
+  .tile.busy .ico .dl { animation:bob .55s ease-in-out infinite alternate; }
+  @keyframes bob { to { transform:translateY(3px); } }
+  .tile.done .ico { background:var(--ok); color:var(--surface); }
+  .tile.done .ico .dl { display:none; }
+  .tile.done .ico .chk { display:block; }
+  .t-name { display:block; font-weight:700; }
+  .t-sub { display:block; font-size:.8rem; color:var(--muted); }
+  .tile.done .t-sub { color:var(--ok); font-weight:600; }
+  @media (prefers-reduced-motion: reduce) {
+    .tile, .tile .fill, .tile .ico { transition:none; }
+    .tile:hover:not(:disabled) { transform:none; }
+    .tile.busy .ico .dl { animation:none; }
+  }
+
+  @media print {
+    body { background:#fff; color:#000; }
+    header.bar, .filters, .toolbar, .noprint, form, button { display:none !important; }
+    .panel { border:0; padding:0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginView">
+  <form class="login" id="loginForm" autocomplete="off">
+    <h1>Daily Mission Report</h1>
+    <p>Sign in to record or review duty reports.</p>
+    <label for="user">Username</label>
+    <input id="user" required autofocus>
+    <label for="pass">Password</label>
+    <input id="pass" type="password" required>
+    <button class="full" type="submit">Sign in</button>
+    <div class="error" id="loginErr" role="alert"></div>
+  </form>
+</div>
+
+<!-- AGENT -->
+<div id="agentView" hidden>
+  <header class="bar"><div class="bar-in">
+    <h1>Daily Mission Report</h1>
+    <div><span id="agentName"></span><button type="button" class="logout">Sign out</button></div>
+  </div></header>
+  <main>
+    <section class="panel">
+      <h2>New duty report</h2>
+      <form id="reportForm">
+        <div class="grid">
+          <div><label for="fSl">SL</label><input id="fSl" readonly></div>
+          <div><label for="fDate">Date</label><input id="fDate" type="date" required></div>
+          <div><label for="fStartKm">Starting km</label><input id="fStartKm" type="number" min="0" step="0.1" required></div>
+          <div><label for="fStartTime">Start time of duty</label><input id="fStartTime" type="time" required></div>
+          <div><label for="fEndKm">Ending km</label><input id="fEndKm" type="number" min="0" step="0.1" required></div>
+          <div><label for="fEndTime">End time of duty</label><input id="fEndTime" type="time" required></div>
+          <div><label for="fExp">Expenses (৳)</label><input id="fExp" type="number" min="0" step="1" value="0" required></div>
+        </div>
+        <label for="fNote">Expense details (optional)</label>
+        <input id="fNote" placeholder="e.g. fuel 800, parking 200">
+        <div class="calc" aria-live="polite">
+          <div><b id="cKm">0</b>km driven</div>
+          <div><b id="cHrs">0 h 0 m</b>duty time</div>
+        </div>
+        <div class="toolbar"><button type="submit">Submit report</button></div>
+        <div class="error" id="formErr" role="alert"></div>
+        <div class="ok" id="formOk" role="status"></div>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>My reports</h2>
+      <div class="scroll" id="myTable"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ADMIN -->
+<div id="adminView" hidden>
+  <header class="bar"><div class="bar-in">
+    <h1>Daily Mission Report · Admin</h1>
+    <div><span>admin</span><button type="button" class="logout">Sign out</button></div>
+  </div></header>
+  <main>
+    <section class="panel">
+      <h2>All reports</h2>
+      <div class="filters">
+        <div><label for="xAgent">Agent</label>
+          <select id="xAgent" style="width:100%;font:inherit;padding:.55rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"><option value="">All agents</option></select></div>
+        <div><label for="xFrom">From</label><input id="xFrom" type="date"></div>
+        <div><label for="xTo">To</label><input id="xTo" type="date"></div>
+      </div>
+      <div class="scroll" id="allTable"></div>
+      <div class="export noprint">
+        <strong>Export reports</strong>
+        <div class="export-sum" id="exportSum" aria-live="polite"></div>
+        <div class="tiles">
+          <button type="button" class="tile" data-fmt="csv"><span class="fill"></span>
+            <span class="ico"><svg class="dl" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg><svg class="chk" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>
+            <span class="t-name">CSV file</span><span class="t-sub" data-sub="Works in any spreadsheet">Works in any spreadsheet</span></button>
+          <button type="button" class="tile" data-fmt="xls"><span class="fill"></span>
+            <span class="ico"><svg class="dl" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg><svg class="chk" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>
+            <span class="t-name">Excel sheet</span><span class="t-sub" data-sub="Formatted table (.xls)">Formatted table (.xls)</span></button>
+          <button type="button" class="tile" data-fmt="pdf"><span class="fill"></span>
+            <span class="ico"><svg class="dl" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg><svg class="chk" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>
+            <span class="t-name">PDF / Print</span><span class="t-sub" data-sub="Choose “Save as PDF” in the print window">Choose “Save as PDF” in the print window</span></button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const STORE = "mission.reports.v1", SESSION = "mission.session.v1";
+  const ADMIN = { user: "admin", pass: "admin123" }, AGENT_PASS = "123";
+  const $ = id => document.getElementById(id);
+
+  // ---- storage ----
+  function read(store, key, fb) { try { const v = store.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } }
+  function write(store, key, v) { try { store.setItem(key, JSON.stringify(v)); } catch {} }
+  let reports = read(localStorage, STORE, []);
+  let session = read(sessionStorage, SESSION, null); // {role, name}
+  const save = () => write(localStorage, STORE, reports);
+
+  // ---- helpers ----
+  const todayStr = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+  const mins = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const dutyMins = (s, e) => { let d = mins(e) - mins(s); if (d < 0) d += 1440; return d; };
+  const fmtDur = m => Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") + " m";
+  const fmtKm = n => (Math.round(n * 10) / 10).toLocaleString("en-US");
+  const fmtMoney = n => "৳ " + Number(n).toLocaleString("en-US");
+  const fmtDate = s => { const [y, m, d] = s.split("-"); return d + "/" + m + "/" + y; };
+  const nextSl = agent => 1 + Math.max(0, ...reports.filter(r => r.agent === agent).map(r => r.sl));
+
+  // ---- views ----
+  function show() {
+    $("loginView").hidden = !!session;
+    $("agentView").hidden = !(session && session.role === "agent");
+    $("adminView").hidden = !(session && session.role === "admin");
+    if (!session) { $("user").focus(); return; }
+    if (session.role === "agent") { $("agentName").textContent = session.name; resetForm(); renderMine(); }
+    else { fillAgents(); renderAll(); }
+  }
+
+  $("loginForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const u = $("user").value.trim(), p = $("pass").value, err = $("loginErr");
+    if (u.toLowerCase() === ADMIN.user) {
+      if (p !== ADMIN.pass) { err.textContent = "Wrong username or password."; return; }
+      session = { role: "admin", name: "admin" };
+    } else if (u && p === AGENT_PASS) {
+      session = { role: "agent", name: u };
+    } else { err.textContent = "Wrong username or password."; return; }
+    err.textContent = ""; e.target.reset();
+    write(sessionStorage, SESSION, session); show();
+  });
+  document.querySelectorAll(".logout").forEach(b => b.addEventListener("click", () => {
+    session = null; try { sessionStorage.removeItem(SESSION); } catch {} show();
+  }));
+
+  // ---- table renderer ----
+  function table(box, rows, showAgent, canDelete) {
+    box.innerHTML = "";
+    if (!rows.length) { box.innerHTML = '<div class="empty">No reports yet.</div>'; return; }
+    const cols = ["SL", ...(showAgent ? ["Agent"] : []), "Date", "Start km", "Start time", "End km", "End time", "Total km", "Duty time", "Expenses", ...(canDelete ? [""] : [])];
+    const t = document.createElement("table");
+    const hr = t.createTHead().insertRow();
+    cols.forEach((c, i) => { const th = document.createElement("th"); th.textContent = c; if (showAgent && c === "Agent") th.className = "left"; hr.appendChild(th); });
+    const tb = t.createTBody();
+    let tk = 0, tm = 0, te = 0;
+    rows.forEach(r => {
+      const km = r.endKm - r.startKm, dm = dutyMins(r.startTime, r.endTime);
+      tk += km; tm += dm; te += r.expenses;
+      const tr = tb.insertRow();
+      const vals = [r.sl, ...(showAgent ? [r.agent] : []), fmtDate(r.date), fmtKm(r.startKm), r.startTime, fmtKm(r.endKm), r.endTime, fmtKm(km), fmtDur(dm), fmtMoney(r.expenses)];
+      vals.forEach((v, i) => { const td = tr.insertCell(); td.textContent = v; if (showAgent && i === 1) td.className = "left"; if (r.note && i === vals.length - 1) td.title = r.note; });
+      if (canDelete) {
+        const td = tr.insertCell(); const b = document.createElement("button");
+        b.type = "button"; b.className = "danger"; b.textContent = "Delete";
+        b.onclick = () => { if (confirm("Delete this report?")) { reports = reports.filter(x => x.id !== r.id); save(); renderAll(); } };
+        td.appendChild(b);
+      }
+    });
+    const tf = t.createTFoot().insertRow();
+    const span = showAgent ? 7 : 6;
+    const c0 = tf.insertCell(); c0.colSpan = span; c0.textContent = "Total (" + rows.length + " reports)";
+    [fmtKm(tk), fmtDur(tm), fmtMoney(te)].forEach(v => { tf.insertCell().textContent = v; });
+    if (canDelete) tf.insertCell();
+    box.appendChild(t);
+  }
+
+  // ---- agent ----
+  function resetForm() {
+    $("reportForm").reset();
+    $("fSl").value = nextSl(session.name); $("fDate").value = todayStr(); $("fExp").value = 0;
+    calc();
+  }
+  function calc() {
+    const s = +$("fStartKm").value, e = +$("fEndKm").value;
+    $("cKm").textContent = $("fStartKm").value && $("fEndKm").value ? fmtKm(e - s) : "0";
+    $("cHrs").textContent = $("fStartTime").value && $("fEndTime").value ? fmtDur(dutyMins($("fStartTime").value, $("fEndTime").value)) : "0 h 00 m";
+  }
+  ["fStartKm","fEndKm","fStartTime","fEndTime"].forEach(id => $(id).addEventListener("input", calc));
+
+  $("reportForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const err = $("formErr"), ok = $("formOk"); err.textContent = ""; ok.textContent = "";
+    const sk = +$("fStartKm").value, ek = +$("fEndKm").value;
+    if (ek < sk) { err.textContent = "Ending km cannot be less than starting km."; return; }
+    reports.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      sl: nextSl(session.name), agent: session.name, date: $("fDate").value,
+      startKm: sk, startTime: $("fStartTime").value, endKm: ek, endTime: $("fEndTime").value,
+      expenses: +$("fExp").value || 0, note: $("fNote").value.trim()
+    });
+    save(); resetForm(); renderMine();
+    ok.textContent = "Report submitted.";
+  });
+  function renderMine() {
+    const mine = reports.filter(r => r.agent === session.name).sort((a, b) => b.sl - a.sl);
+    table($("myTable"), mine, false, false);
+  }
+
+  // ---- admin ----
+  function fillAgents() {
+    const sel = $("xAgent"), keep = sel.value;
+    sel.innerHTML = '<option value="">All agents</option>';
+    [...new Set(reports.map(r => r.agent))].sort().forEach(n => { const o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); });
+    sel.value = keep;
+  }
+  function adminRows() {
+    const a = $("xAgent").value, f = $("xFrom").value, t = $("xTo").value;
+    return reports.filter(r => (!a || r.agent === a) && (!f || r.date >= f) && (!t || r.date <= t))
+      .sort((x, y) => y.date.localeCompare(x.date) || x.agent.localeCompare(y.agent) || y.sl - x.sl);
+  }
+  function renderAll() { fillAgents(); table($("allTable"), adminRows(), true, true); updateExport(); }
+  ["xAgent","xFrom","xTo"].forEach(id => $(id).addEventListener("input", renderAll));
+
+  const HEAD = ["SL","Agent","Date","Start km","Start time","End km","End time","Total km","Duty time","Expenses (BDT)","Expense details"];
+  const rowVals = r => [r.sl, r.agent, r.date, r.startKm, r.startTime, r.endKm, r.endTime, r.endKm - r.startKm, fmtDur(dutyMins(r.startTime, r.endTime)), r.expenses, r.note || ""];
+  const esc = v => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  function saveFile(name, mime, content) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function exportNow(fmt, rows) {
+    const base = "mission-reports-" + todayStr();
+    if (fmt === "csv") {
+      const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+      saveFile(base + ".csv", "text/csv;charset=utf-8", "\ufeff" + [HEAD.map(q).join(","), ...rows.map(r => rowVals(r).map(q).join(","))].join("\n"));
+      return base + ".csv";
+    }
+    if (fmt === "xls") {
+      const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1"><tr>' +
+        HEAD.map(h => "<th style=\"background:#1f3a5f;color:#fff\">" + esc(h) + "</th>").join("") + "</tr>" +
+        rows.map(r => "<tr>" + rowVals(r).map(v => "<td>" + esc(v) + "</td>").join("") + "</tr>").join("") + "</table></body></html>";
+      saveFile(base + ".xls", "application/vnd.ms-excel", html);
+      return base + ".xls";
+    }
+    window.print();
+    return "";
+  }
+
+  function updateExport() {
+    const rows = adminRows(), agents = new Set(rows.map(r => r.agent)).size;
+    const total = rows.reduce((n, r) => n + r.expenses, 0);
+    $("exportSum").textContent = rows.length
+      ? rows.length + " reports · " + agents + (agents === 1 ? " agent" : " agents") + " · expenses " + fmtMoney(total) + " · matches the filters above"
+      : "Nothing to export. Adjust the filters or wait for agents to submit reports.";
+    document.querySelectorAll(".tile").forEach(t => { t.disabled = !rows.length; });
+  }
+
+  document.querySelectorAll(".tile").forEach(tile => tile.addEventListener("click", () => {
+    const rows = adminRows(); if (!rows.length) return;
+    const sub = tile.querySelector(".t-sub"), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    tile.disabled = true; tile.classList.add("busy"); sub.textContent = "Preparing " + rows.length + " reports…";
+    setTimeout(() => {
+      const name = exportNow(tile.dataset.fmt, rows);
+      tile.classList.remove("busy"); tile.classList.add("done");
+      sub.textContent = name ? "Saved " + name : "Print window opened";
+      setTimeout(() => { tile.classList.remove("done"); sub.textContent = sub.dataset.sub; tile.disabled = !adminRows().length; }, 3000);
+    }, reduce ? 0 : 900);
+  }));
+
+  show();
+})();
+</script>
+</body>
+</html>
